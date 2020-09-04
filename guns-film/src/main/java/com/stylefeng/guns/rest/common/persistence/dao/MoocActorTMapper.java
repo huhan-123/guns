@@ -4,6 +4,7 @@ import com.stylefeng.guns.api.film.vo.ActorVO;
 import com.stylefeng.guns.rest.common.persistence.model.MoocActorT;
 import com.baomidou.mybatisplus.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Param;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
@@ -15,6 +16,7 @@ import java.util.List;
  * @author huhan
  * @since 2020-08-17
  */
+@Repository
 public interface MoocActorTMapper extends BaseMapper<MoocActorT> {
     List<ActorVO> getActorsByFilmId(@Param("filmId") String filmId);
 }

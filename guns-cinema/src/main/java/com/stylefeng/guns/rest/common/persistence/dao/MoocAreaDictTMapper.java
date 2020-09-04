@@ -2,6 +2,7 @@ package com.stylefeng.guns.rest.common.persistence.dao;
 
 import com.stylefeng.guns.rest.common.persistence.model.MoocAreaDictT;
 import com.baomidou.mybatisplus.mapper.BaseMapper;
+import org.springframework.stereotype.Repository;
 
 /**
  * <p>
@@ -11,6 +12,7 @@ import com.baomidou.mybatisplus.mapper.BaseMapper;
  * @author jiangzh
  * @since 2018-09-15
  */
+@Repository
 public interface MoocAreaDictTMapper extends BaseMapper<MoocAreaDictT> {
 
 }

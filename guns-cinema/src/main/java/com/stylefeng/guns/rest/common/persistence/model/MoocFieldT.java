@@ -60,6 +60,17 @@ public class MoocFieldT extends Model<MoocFieldT> {
      */
     private Integer price;
 
+    /**
+     *  已售座位
+     */
+    @TableField("sold_seats")
+    private String soldSeats;
+
+    /**
+     * 版本号
+     */
+    private Integer version;
+
 
     public Integer getUuid() {
         return uuid;
@@ -123,6 +134,22 @@ public class MoocFieldT extends Model<MoocFieldT> {
 
     public void setPrice(Integer price) {
         this.price = price;
+    }
+
+    public String getSoldSeats() {
+        return soldSeats;
+    }
+
+    public void setSoldSeats(String soldSeats) {
+        this.soldSeats = soldSeats;
+    }
+
+    public Integer getVersion() {
+        return version;
+    }
+
+    public void setVersion(Integer version) {
+        this.version = version;
     }
 
     @Override

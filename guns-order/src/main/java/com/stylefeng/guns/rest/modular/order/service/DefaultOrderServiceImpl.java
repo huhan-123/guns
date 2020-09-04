@@ -9,14 +9,16 @@ import com.stylefeng.guns.api.cinema.api.CinemaServiceAPI;
 import com.stylefeng.guns.api.cinema.vo.FilmInfoVO;
 import com.stylefeng.guns.api.cinema.vo.OrderQueryVO;
 import com.stylefeng.guns.api.order.api.OrderServiceAPI;
+import com.stylefeng.guns.api.order.vo.MoocOrderT;
 import com.stylefeng.guns.api.order.vo.OrderVO;
 import com.stylefeng.guns.core.util.UUIDUtil;
 import com.stylefeng.guns.rest.common.persistence.dao.MoocOrderTMapper;
-import com.stylefeng.guns.rest.common.persistence.model.MoocOrderT;
 import com.stylefeng.guns.rest.common.util.FTPUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.mengyun.tcctransaction.api.Compensable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -26,13 +28,14 @@ import java.util.List;
 
 @Slf4j
 @Component
-@Service(interfaceClass = OrderServiceAPI.class, filter = {"tracing"})
+@Service(interfaceClass = OrderServiceAPI.class, filter = {"tracing"}, timeout = 10000)
 public class DefaultOrderServiceImpl implements OrderServiceAPI {
 
     @Autowired
     private MoocOrderTMapper moocOrderTMapper;
 
-    @Reference(interfaceClass = CinemaServiceAPI.class, filter = {"tracing"})
+    //    @Reference(interfaceClass = CinemaServiceAPI.class, filter = {"tracing"})
+    @Autowired
     private CinemaServiceAPI cinemaServiceAPI;
 
     @Autowired
@@ -72,7 +75,7 @@ public class DefaultOrderServiceImpl implements OrderServiceAPI {
         }
     }
 
-    // 判断是否为已售座位
+    /*// 判断是否为已售座位
     @Override
     public boolean isNotSoldSeats(String fieldId, String seats) {
 
@@ -93,11 +96,11 @@ public class DefaultOrderServiceImpl implements OrderServiceAPI {
             }
         }
         return true;
-    }
+    }*/
 
-    // 创建新的订单
+    // 插入订单（草稿状态）
     @Override
-    public OrderVO saveOrderInfo(Integer fieldId, String soldSeats, String seatsName, Integer userId) {
+    public MoocOrderT saveOrderInfo(Integer fieldId, String soldSeats, String seatsName, Integer userId) {
 
         // 编号
         String uuid = UUIDUtil.genUuid();
@@ -125,17 +128,12 @@ public class DefaultOrderServiceImpl implements OrderServiceAPI {
         moocOrderT.setFilmId(filmId);
         moocOrderT.setFieldId(fieldId);
         moocOrderT.setCinemaId(cinemaId);
+        moocOrderT.setOrderStatus(3);
+        moocOrderT.setVersion(1);
 
         Integer insert = moocOrderTMapper.insert(moocOrderT);
         if (insert > 0) {
-            // 返回查询结果
-            OrderVO orderVO = moocOrderTMapper.getOrderInfoById(uuid);
-            if (orderVO == null || orderVO.getOrderId() == null) {
-                log.error("订单信息查询失败,订单编号为{}", uuid);
-                return null;
-            } else {
-                return orderVO;
-            }
+            return moocOrderT;
         } else {
             // 插入出错
             log.error("订单插入失败");
@@ -229,6 +227,64 @@ public class DefaultOrderServiceImpl implements OrderServiceAPI {
             return true;
         } else {
             return false;
+        }
+    }
+
+    @Override
+    @Compensable(confirmMethod = "confirmMakePayment", cancelMethod = "cancelMakePayment", asyncConfirm = true)
+    public boolean makePayment(MoocOrderT moocOrderT, String soldSeats) {
+        //如果订单是草稿状态，则修改为支付中
+        if (moocOrderT.getOrderStatus() == MoocOrderT.DRAFT) {
+            moocOrderT.setOrderStatus(MoocOrderT.PAYING);
+            moocOrderT.setVersion(moocOrderT.getVersion() + 1);
+
+            EntityWrapper<MoocOrderT> wrapper = new EntityWrapper<>();
+            wrapper.eq("UUID", moocOrderT.getUuid())
+                    .and()
+                    .eq("version", moocOrderT.getVersion() - 1);
+            Integer effectRows = moocOrderTMapper.update(moocOrderT, wrapper);
+
+            //如果订单状态修改失败，直接返回false
+            if (effectRows <= 0) {
+                return false;
+            }
+        }
+
+        //更新座位
+        if (!cinemaServiceAPI.hasSold(moocOrderT.getFieldId(), soldSeats)) {
+            cinemaServiceAPI.addSoldSeats(moocOrderT.getFieldId(), soldSeats);
+        }
+        return true;
+    }
+
+    public void confirmMakePayment(MoocOrderT moocOrderT, String soldSeats) {
+        MoocOrderT currentMoocOrderT = moocOrderTMapper.selectOrderById(moocOrderT.getUuid());
+        //如果状态不为PAYING，证明其它线程已经修改了订单状态，为保证幂等性，直接返回
+        if (currentMoocOrderT != null && currentMoocOrderT.getOrderStatus() == MoocOrderT.PAYING) {
+            currentMoocOrderT.setOrderStatus(MoocOrderT.WAIT);
+            updateOrder(currentMoocOrderT);
+        }
+    }
+
+    public void cancelMakePayment(MoocOrderT moocOrderT, String soldSeats) {
+        MoocOrderT currentMoocOrderT = moocOrderTMapper.selectOrderById(moocOrderT.getUuid());
+        //如果状态不为PAYING，证明其它线程已经修改了订单状态，为保证幂等性，直接返回
+        if (currentMoocOrderT != null && currentMoocOrderT.getOrderStatus() == MoocOrderT.PAYING) {
+            currentMoocOrderT.setOrderStatus(MoocOrderT.CANCEL);
+            updateOrder(currentMoocOrderT);
+        }
+    }
+
+    private void updateOrder(MoocOrderT currentMoocOrderT) {
+        currentMoocOrderT.setVersion(currentMoocOrderT.getVersion() + 1);
+
+        EntityWrapper<MoocOrderT> wrapper = new EntityWrapper<>();
+        wrapper.eq("UUID", currentMoocOrderT.getUuid()).and().eq("version", currentMoocOrderT.getVersion() - 1);
+        Integer effectCount = moocOrderTMapper.update(currentMoocOrderT, wrapper);
+
+        //更新失败，抛出异常，事务管理器重试
+        if (effectCount <= 0) {
+            throw new RuntimeException("confirm or cancel makePayment failed");
         }
     }
 }

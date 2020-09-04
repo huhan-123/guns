@@ -26,9 +26,10 @@ import java.util.List;
 @RequestMapping("/cinema")
 @Slf4j
 public class CinemaController {
-    //设置 cache=true 开启结果缓存
+    //设置 cache=true 开启结果缓存(注意这里的缓存不能乱用，这里用了会导致所有对 cinemaServiceAPI 的引用都会使用缓存)
     //connections 设置最大连接数
-    @Reference(interfaceClass = CinemaServiceAPI.class, cache = "lru", connections = 100)
+//    @Reference(interfaceClass = CinemaServiceAPI.class, cache = "lru", connections = 100)
+    @Reference(interfaceClass = CinemaServiceAPI.class)
     private CinemaServiceAPI cinemaServiceAPI;
 
     @Reference(interfaceClass = OrderServiceAPI.class)

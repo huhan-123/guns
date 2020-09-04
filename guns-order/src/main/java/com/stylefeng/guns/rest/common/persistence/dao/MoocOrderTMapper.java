@@ -1,10 +1,11 @@
 package com.stylefeng.guns.rest.common.persistence.dao;
 
 import com.baomidou.mybatisplus.plugins.Page;
+import com.stylefeng.guns.api.order.vo.MoocOrderT;
 import com.stylefeng.guns.api.order.vo.OrderVO;
-import com.stylefeng.guns.rest.common.persistence.model.MoocOrderT;
 import com.baomidou.mybatisplus.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Param;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
@@ -16,6 +17,7 @@ import java.util.List;
  * @author jiangzh
  * @since 2018-09-20
  */
+@Repository
 public interface MoocOrderTMapper extends BaseMapper<MoocOrderT> {
 
     //获取 json 文件中所有的座位
@@ -29,5 +31,8 @@ public interface MoocOrderTMapper extends BaseMapper<MoocOrderT> {
 
     //获取场次已经出售的座位
     String getSoldSeatsByFieldId(@Param("fieldId")Integer fieldId);
+
+    //根据订单 id 获取订单
+    MoocOrderT selectOrderById(@Param("uuid") String uuid);
 
 }

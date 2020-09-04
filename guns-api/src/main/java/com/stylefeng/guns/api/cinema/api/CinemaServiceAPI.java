@@ -2,6 +2,8 @@ package com.stylefeng.guns.api.cinema.api;
 
 import com.baomidou.mybatisplus.plugins.Page;
 import com.stylefeng.guns.api.cinema.vo.*;
+import org.mengyun.tcctransaction.api.Compensable;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
@@ -11,6 +13,7 @@ import java.util.List;
  * @Description
  * @Verion 1.0
  */
+@Repository
 public interface CinemaServiceAPI {
     //根据 CinemaQueryVO，查询影院列表
     Page<CinemaVO> getCinemas(CinemaQueryVO cinemaQueryVO);
@@ -41,4 +44,11 @@ public interface CinemaServiceAPI {
         该部分是订单模块需要的内容
      */
     OrderQueryVO getOrderNeeds(int fieldId);
+
+    //判断座位是否已售
+    boolean hasSold(int fieldId, String seats);
+
+    //这里的@compensabel 很重要，它的作用是在 RPC 调用前让远程服务代理对象也走一遍切面逻辑，将远程参与者加入到调用方的 transaction 里
+    @Compensable
+    void addSoldSeats(Integer fieldId, String seats);
 }

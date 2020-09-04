@@ -3,7 +3,7 @@
 <mapper namespace="com.stylefeng.guns.rest.common.persistence.dao.MoocOrderTMapper">
 
     <!-- 通用查询映射结果 -->
-    <resultMap id="BaseResultMap" type="com.stylefeng.guns.rest.common.persistence.model.MoocOrderT">
+    <resultMap id="BaseResultMap" type="com.stylefeng.guns.api.order.vo.MoocOrderT">
         <result column="UUID" property="uuid" />
         <result column="cinema_id" property="cinemaId" />
         <result column="field_id" property="fieldId" />
@@ -15,6 +15,7 @@
         <result column="order_time" property="orderTime" />
         <result column="order_user" property="orderUser" />
         <result column="order_status" property="orderStatus" />
+        <result column="version" property="version"/>
     </resultMap>
 
     <select id="getSeatsByFieldId" parameterType="java.lang.String" resultType="java.lang.String">
@@ -71,6 +72,10 @@
 
     <select id="getSoldSeatsByFieldId" parameterType="java.lang.Integer" resultType="java.lang.String">
         SELECT GROUP_CONCAT(seats_ids) FROM mooc_order_t where field_id=#{fieldId}
+    </select>
+    <select id="selectOrderById" resultType="com.stylefeng.guns.api.order.vo.MoocOrderT" resultMap="BaseResultMap">
+        SELECT *
+        FROM mooc_order_t WHERE  UUID=#{uuid}
     </select>
 
 </mapper>

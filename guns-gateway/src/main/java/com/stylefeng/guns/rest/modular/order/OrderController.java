@@ -7,7 +7,9 @@ import com.netflix.hystrix.contrib.javanica.annotation.HystrixProperty;
 import com.stylefeng.guns.api.alipay.api.AliPayServiceAPI;
 import com.stylefeng.guns.api.alipay.vo.AliPayInfoVO;
 import com.stylefeng.guns.api.alipay.vo.AliPayResultVO;
+import com.stylefeng.guns.api.cinema.api.CinemaServiceAPI;
 import com.stylefeng.guns.api.order.api.OrderServiceAPI;
+import com.stylefeng.guns.api.order.vo.MoocOrderT;
 import com.stylefeng.guns.api.order.vo.OrderVO;
 import com.stylefeng.guns.rest.common.CurrentUser;
 import com.stylefeng.guns.rest.config.RateLimiter;
@@ -27,6 +29,9 @@ public class OrderController {
 
     @Reference(interfaceClass = AliPayServiceAPI.class,filter = {"tracing"})
     private AliPayServiceAPI aliPayServiceAPI;
+
+    @Reference(interfaceClass = CinemaServiceAPI.class, filter = {"tracing"})
+    private CinemaServiceAPI cinemaServiceAPI;
 
     @Autowired
     private RateLimiterManager rateLimiterManager;
@@ -52,6 +57,9 @@ public class OrderController {
     //注意，Hystrix 针对的是当前服务（这里就是 /buyTickets 接口），而不是其调用的服务，如果当前服务不可用或异常，就会降级熔断
     @RequestMapping(value = "/buyTickets", method = RequestMethod.POST)
     public ResponseVO buyTickets(Integer fieldId, String soldSeats, String seatsName) {
+        if (fieldId == null || soldSeats == null || soldSeats.isEmpty()) {
+            return ResponseVO.serviceFail("参数不合法");
+        }
         try {
             RateLimiter rateLimiter = rateLimiterManager.getLimiter("/order/buyTickets", 10, 1, 100);
             if (!rateLimiter.acquire()) {
@@ -62,21 +70,25 @@ public class OrderController {
             boolean isTrue = orderServiceAPI.isTrueSeats(fieldId + "", soldSeats);
 
             // 已经销售的座位里，有没有这些座位
-            boolean isNotSold = orderServiceAPI.isNotSoldSeats(fieldId + "", soldSeats);
+            boolean hasSold =cinemaServiceAPI.hasSold(fieldId, soldSeats);
 
             // 验证，上述两个内容有一个不为真，则不创建订单信息
-            if (isTrue && isNotSold) {
+            if (isTrue && !hasSold) {
                 // 创建订单信息,注意获取登陆人
                 String userId = CurrentUser.getUserId();
                 if (userId == null || userId.trim().length() == 0) {
                     return ResponseVO.serviceFail("用户未登陆");
                 }
-                OrderVO orderVO = orderServiceAPI.saveOrderInfo(fieldId, soldSeats, seatsName, Integer.parseInt(userId));
-                if (orderVO == null) {
+                //先插入草稿状态订单
+                MoocOrderT moocOrderT = orderServiceAPI.saveOrderInfo(fieldId, soldSeats, seatsName, Integer.parseInt(userId));
+                //使用分布式事务保证数据一致性（修改已售座位和插入订单要同时成功或同时失败）
+                boolean result = orderServiceAPI.makePayment(moocOrderT, soldSeats);
+
+                if (!result) {
                     log.error("购票未成功");
                     return ResponseVO.serviceFail("购票业务异常");
                 } else {
-                    return ResponseVO.success(orderVO);
+                    return ResponseVO.success(moocOrderT);
                 }
             } else {
                 return ResponseVO.serviceFail("订单中的座位编号有问题");

@@ -1,11 +1,11 @@
-package com.stylefeng.guns.rest.common.persistence.model;
+package com.stylefeng.guns.api.order.vo;
 
-import java.util.Date;
-import com.baomidou.mybatisplus.annotations.TableField;
 import com.baomidou.mybatisplus.activerecord.Model;
-import com.baomidou.mybatisplus.annotations.TableId;
+import com.baomidou.mybatisplus.annotations.TableField;
 import com.baomidou.mybatisplus.annotations.TableName;
+
 import java.io.Serializable;
+import java.util.Date;
 
 /**
  * <p>
@@ -71,10 +71,22 @@ public class MoocOrderT extends Model<MoocOrderT> {
     @TableField("order_user")
     private Integer orderUser;
     /**
-     * 0-待支付,1-已支付,2-已关闭
+     * 0-待支付（confirm）,1-已支付,2-已关闭,3-草稿,4-正在支付（try）,5-取消（cancel）
      */
     @TableField("order_status")
     private Integer orderStatus;
+
+    /**
+     * 版本号
+     */
+    private Integer version;
+
+    public static final int WAIT = 0;
+    public static final int PAYED = 1;
+    public static final int CLOSED = 2;
+    public static final int DRAFT = 3;
+    public static final int PAYING = 4;
+    public static final int CANCEL = 5;
 
 
     public String getUuid() {
@@ -161,6 +173,14 @@ public class MoocOrderT extends Model<MoocOrderT> {
         return orderStatus;
     }
 
+    public Integer getVersion() {
+        return version;
+    }
+
+    public void setVersion(Integer version) {
+        this.version = version;
+    }
+
     public void setOrderStatus(Integer orderStatus) {
         this.orderStatus = orderStatus;
     }
@@ -173,17 +193,17 @@ public class MoocOrderT extends Model<MoocOrderT> {
     @Override
     public String toString() {
         return "MoocOrderT{" +
-        "uuid=" + uuid +
-        ", cinemaId=" + cinemaId +
-        ", fieldId=" + fieldId +
-        ", filmId=" + filmId +
-        ", seatsIds=" + seatsIds +
-        ", seatsName=" + seatsName +
-        ", filmPrice=" + filmPrice +
-        ", orderPrice=" + orderPrice +
-        ", orderTime=" + orderTime +
-        ", orderUser=" + orderUser +
-        ", orderStatus=" + orderStatus +
-        "}";
+                "uuid=" + uuid +
+                ", cinemaId=" + cinemaId +
+                ", fieldId=" + fieldId +
+                ", filmId=" + filmId +
+                ", seatsIds=" + seatsIds +
+                ", seatsName=" + seatsName +
+                ", filmPrice=" + filmPrice +
+                ", orderPrice=" + orderPrice +
+                ", orderTime=" + orderTime +
+                ", orderUser=" + orderUser +
+                ", orderStatus=" + orderStatus +
+                "}";
     }
 }

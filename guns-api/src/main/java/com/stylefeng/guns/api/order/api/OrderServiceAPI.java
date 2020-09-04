@@ -1,7 +1,9 @@
 package com.stylefeng.guns.api.order.api;
 
 import com.baomidou.mybatisplus.plugins.Page;
+import com.stylefeng.guns.api.order.vo.MoocOrderT;
 import com.stylefeng.guns.api.order.vo.OrderVO;
+import org.mengyun.tcctransaction.api.Compensable;
 
 public interface OrderServiceAPI {
 
@@ -9,10 +11,10 @@ public interface OrderServiceAPI {
     boolean isTrueSeats(String fieldId,String seats);
 
     // 已经销售的座位里，有没有这些座位（避免重复销售同一个座位）
-    boolean isNotSoldSeats(String fieldId,String seats);
+//    boolean isNotSoldSeats(String fieldId,String seats);
 
     // 创建订单信息
-    OrderVO saveOrderInfo(Integer fieldId, String soldSeats, String seatsName, Integer userId);
+     MoocOrderT saveOrderInfo(Integer fieldId, String soldSeats, String seatsName, Integer userId);
 
     // 获取当前登陆人已经购买的订单
     Page<OrderVO> getOrderByUserId(Integer userId, Page<OrderVO> page);
@@ -26,4 +28,7 @@ public interface OrderServiceAPI {
     boolean paySuccess(String orderId);
 
     boolean payFail(String orderId);
+
+    @Compensable
+    boolean makePayment(MoocOrderT moocOrderT, String soldSeats);
 }
